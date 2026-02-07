@@ -16,6 +16,7 @@ class Workout(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer)
     subjective_fatigue: Mapped[int] = mapped_column(Integer)
     workout_quality: Mapped[str] = mapped_column(String(16))
+    program_day_id: Mapped[int | None] = mapped_column(ForeignKey("program_day.id"))
 
 
 class WorkoutExercise(Base):
@@ -26,6 +27,9 @@ class WorkoutExercise(Base):
     )
     exercise_name: Mapped[str] = mapped_column(String(128), primary_key=True)
     set_number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    exercise_type: Mapped[str] = mapped_column(String(16), default="strength")
+    muscle_group: Mapped[str | None] = mapped_column(String(64))
     reps: Mapped[int] = mapped_column(Integer)
     weight_kg: Mapped[float] = mapped_column(Float)
     rpe: Mapped[float] = mapped_column(Float)
+    duration_minutes: Mapped[int | None] = mapped_column(Integer)

@@ -32,7 +32,10 @@ class ProgramExercise(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     program_day_id: Mapped[int] = mapped_column(ForeignKey("program_day.id"))
+    exercise_type: Mapped[str] = mapped_column(String(16), default="strength")
     exercise_name: Mapped[str] = mapped_column(String(128))
+    muscle_group: Mapped[str | None] = mapped_column(String(64))
     target_sets: Mapped[int] = mapped_column(Integer)
     target_reps: Mapped[int] = mapped_column(Integer)
     target_weight_kg: Mapped[float | None] = mapped_column(Float)
+    target_duration_minutes: Mapped[int | None] = mapped_column(Integer)
