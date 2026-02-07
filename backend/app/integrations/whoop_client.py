@@ -26,7 +26,11 @@ class WhoopClient:
         return {"Authorization": f"Bearer {self.access_token}"}
 
     def get_cycles(self, start: str | None = None, end: str | None = None) -> dict[str, Any]:
-        params = {"start": start, "end": end, "limit": 25}
+        params = {"limit": 25}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{self.base_url}/v2/cycle", headers=self._headers(), params=params
