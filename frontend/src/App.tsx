@@ -139,7 +139,12 @@ export default function App() {
   });
   const [goalErrors, setGoalErrors] = useState<string[]>([]);
 
-  const [exerciseForm, setExerciseForm] = useState({
+  const [exerciseForm, setExerciseForm] = useState<{
+    name: string;
+    exercise_type: string;
+    muscle_group: string;
+    equipment: string;
+  }>({
     name: "",
     exercise_type: "strength",
     muscle_group: MUSCLE_GROUPS[0],
