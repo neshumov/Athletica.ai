@@ -68,6 +68,14 @@ class WhoopClient:
             params["end"] = end
         return {"records": self._get_paginated("/v2/activity/sleep", params)}
 
+    def get_workouts(self, start: str | None = None, end: str | None = None) -> dict[str, Any]:
+        params = {"limit": 25}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return {"records": self._get_paginated("/v2/activity/workout", params)}
+
     def get_body_measurement(self) -> dict[str, Any]:
         with httpx.Client(timeout=30) as client:
             resp = client.get(
