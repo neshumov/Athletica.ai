@@ -47,6 +47,7 @@ type TemplateExercise = {
   exercise_type: string;
   muscle_group: string;
   equipment: string;
+  target_reps?: number | null;
 };
 
 type CalendarExercise = {
@@ -181,6 +182,7 @@ export default function App() {
   const [templateName, setTemplateName] = useState("");
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [templateExerciseId, setTemplateExerciseId] = useState<string>("");
+  const [templateTargetReps, setTemplateTargetReps] = useState<number>(10);
   const [templateErrors, setTemplateErrors] = useState<string[]>([]);
   const [templateExercises, setTemplateExercises] = useState<TemplateExercise[]>([]);
 
@@ -205,6 +207,18 @@ export default function App() {
   const exerciseMap = useMemo(() => {
     return new Map((exercises || []).map((ex) => [ex.id, ex]));
   }, [exercises]);
+  const nutritionTrend = useMemo(() => {
+    const entries = (nutrition || [])
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return entries.slice(-7).map((n) => ({
+      day: n.date.slice(5),
+      calories: n.calories,
+      protein: n.protein_g,
+      fat: n.fat_g,
+      carbs: n.carbs_g
+    }));
+  }, [nutrition]);
 
   const togglePriority = (muscle: string) => {
     setGoalForm((s) => {
@@ -308,7 +322,11 @@ export default function App() {
     await fetch(`${API_BASE}/workouts/templates/${templateId}/exercises`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ exercise_id: Number(templateExerciseId), order_index: 0 })
+      body: JSON.stringify({
+        exercise_id: Number(templateExerciseId),
+        order_index: 0,
+        target_reps: templateTargetReps || null
+      })
     });
     await loadTemplateExercises(templateId);
   };
@@ -321,7 +339,7 @@ export default function App() {
       data.map((ex) => ({
         exercise_id: ex.exercise_id,
         set_number: 1,
-        reps: ex.exercise_type === "cardio" ? 0 : 10,
+        reps: ex.exercise_type === "cardio" ? 0 : ex.target_reps || 10,
         weight_kg: 0,
         duration_minutes: ex.exercise_type === "cardio" ? 20 : 0
       }))
@@ -649,6 +667,65 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            <div className="rounded-3xl border border-slate/60 bg-coal/70 p-6 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-mist/50">
+                    Nutrition Trend
+                  </p>
+                  <h3 className="mt-2 font-display text-xl text-white">
+                    Calories & Macros
+                  </h3>
+                </div>
+                <span className="rounded-full bg-lime/15 px-3 py-1 text-xs text-lime">
+                  Last 7 days
+                </span>
+              </div>
+              <div className="mt-6 h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={nutritionTrend}>
+                    <XAxis dataKey="day" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#101418",
+                        border: "1px solid #252c35",
+                        color: "#c7d2e3"
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="calories"
+                      stroke="#ff5c35"
+                      strokeWidth={3}
+                      dot={{ r: 3, stroke: "#ff5c35" }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="protein"
+                      stroke="#c2f970"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="carbs"
+                      stroke="#4ad0ff"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="fat"
+                      stroke="#f7b267"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </section>
         )}
 
@@ -926,6 +1003,15 @@ export default function App() {
                     ))}
                   </select>
                 </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-mist/60">Target Reps</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg bg-slate/40 px-3 py-2"
+                    value={templateTargetReps}
+                    onChange={(e) => setTemplateTargetReps(Number(e.target.value))}
+                  />
+                </div>
                 <button
                   className="rounded-lg bg-ember px-4 py-2 text-sm text-ink"
                   onClick={addTemplateExercise}
@@ -941,6 +1027,7 @@ export default function App() {
                       <span>
                         {ex.name} ·{" "}
                         {ex.exercise_type === "strength" ? "Strength" : "Cardio"}
+                        {ex.target_reps ? ` · ${ex.target_reps} reps` : ""}
                       </span>
                       <button
                         className="rounded-lg bg-ember/20 px-2 py-1 text-[11px] text-ember"

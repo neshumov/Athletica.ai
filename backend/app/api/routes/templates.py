@@ -37,8 +37,9 @@ def list_template_exercises(template_id: int, db: Session = Depends(get_db)) -> 
             "exercise_type": ex.exercise_type,
             "muscle_group": ex.muscle_group,
             "equipment": ex.equipment,
+            "target_reps": row.target_reps,
         }
-        for _, ex in rows
+        for row, ex in rows
     ]
 
 
@@ -67,6 +68,7 @@ def add_template_exercise(
         workout_template_id=template_id,
         exercise_id=payload.exercise_id,
         order_index=payload.order_index,
+        target_reps=payload.target_reps,
     )
     db.add(row)
     db.commit()

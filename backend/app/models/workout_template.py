@@ -20,3 +20,4 @@ class WorkoutTemplateExercise(Base):
     workout_template_id: Mapped[int] = mapped_column(ForeignKey("workout_template.id"))
     exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id"))
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    target_reps: Mapped[int | None] = mapped_column(Integer, nullable=True)
