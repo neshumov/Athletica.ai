@@ -47,7 +47,7 @@ type TemplateExercise = {
   exercise_type: string;
   muscle_group: string;
   equipment: string;
-  target_reps?: number | null;
+  target_sets?: number | null;
 };
 
 type CalendarExercise = {
@@ -182,9 +182,10 @@ export default function App() {
   const [templateName, setTemplateName] = useState("");
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [templateExerciseId, setTemplateExerciseId] = useState<string>("");
-  const [templateTargetReps, setTemplateTargetReps] = useState<number>(10);
+  const [templateTargetSets, setTemplateTargetSets] = useState<number>(3);
   const [templateErrors, setTemplateErrors] = useState<string[]>([]);
   const [templateExercises, setTemplateExercises] = useState<TemplateExercise[]>([]);
+  const [collapsedExercises, setCollapsedExercises] = useState<Set<number>>(new Set());
 
   const [calendarForm, setCalendarForm] = useState({
     date: "",
@@ -325,16 +326,16 @@ export default function App() {
       body: JSON.stringify({
         exercise_id: Number(templateExerciseId),
         order_index: 0,
-        target_reps: templateTargetReps || null
+        target_sets: templateTargetSets || null
       })
     });
     await loadTemplateExercises(templateId);
   };
 
-  const updateTemplateExerciseReps = (exerciseId: number, reps: number) => {
+  const updateTemplateExerciseSets = (exerciseId: number, sets: number) => {
     setTemplateExercises((prev) =>
       prev.map((ex) =>
-        ex.exercise_id === exerciseId ? { ...ex, target_reps: reps } : ex
+        ex.exercise_id === exerciseId ? { ...ex, target_sets: sets } : ex
       )
     );
   };
@@ -345,7 +346,7 @@ export default function App() {
       exercises: templateExercises.map((ex, index) => ({
         exercise_id: ex.exercise_id,
         order_index: index,
-        target_reps: ex.target_reps ?? null
+        target_sets: ex.target_sets ?? null
       }))
     };
     await fetch(`${API_BASE}/workouts/templates/${templateId}/exercises`, {
@@ -360,15 +361,20 @@ export default function App() {
     const res = await fetch(`${API_BASE}/workouts/templates/${id}/exercises`);
     const data = (await res.json()) as TemplateExercise[];
     setTemplateExercises(data);
-    setCalendarExercises(
-      data.map((ex) => ({
-        exercise_id: ex.exercise_id,
-        set_number: 1,
-        reps: ex.exercise_type === "cardio" ? 0 : ex.target_reps || 10,
-        weight_kg: 0,
-        duration_minutes: ex.exercise_type === "cardio" ? 20 : 0
-      }))
-    );
+    const rows: CalendarExercise[] = [];
+    data.forEach((ex) => {
+      const sets = ex.target_sets || 1;
+      for (let i = 1; i <= sets; i += 1) {
+        rows.push({
+          exercise_id: ex.exercise_id,
+          set_number: i,
+          reps: ex.exercise_type === "cardio" ? 0 : 10,
+          weight_kg: 0,
+          duration_minutes: ex.exercise_type === "cardio" ? 20 : 0
+        });
+      }
+    });
+    setCalendarExercises(rows);
   };
 
   const removeTemplateExercise = async (exerciseId: number) => {
@@ -382,10 +388,17 @@ export default function App() {
 
   const addCalendarExerciseRow = () => {
     if (!templateExerciseId) return;
+    const nextSet =
+      Math.max(
+        0,
+        ...calendarExercises
+          .filter((ex) => ex.exercise_id === Number(templateExerciseId))
+          .map((ex) => ex.set_number)
+      ) + 1;
     setCalendarExercises((prev) =>
       prev.concat({
         exercise_id: Number(templateExerciseId),
-        set_number: 1,
+        set_number: nextSet,
         reps: 10,
         weight_kg: 0,
         duration_minutes: 0
@@ -1029,12 +1042,12 @@ export default function App() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-mist/60">Target Reps</label>
+                  <label className="text-xs text-mist/60">Target Sets</label>
                   <input
                     type="number"
                     className="w-full rounded-lg bg-slate/40 px-3 py-2"
-                    value={templateTargetReps}
-                    onChange={(e) => setTemplateTargetReps(Number(e.target.value))}
+                    value={templateTargetSets}
+                    onChange={(e) => setTemplateTargetSets(Number(e.target.value))}
                   />
                 </div>
                 <button
@@ -1058,15 +1071,15 @@ export default function App() {
                       <span>
                         {ex.name} ·{" "}
                         {ex.exercise_type === "strength" ? "Strength" : "Cardio"}
-                        {ex.target_reps ? ` · ${ex.target_reps} reps` : ""}
+                        {ex.target_sets ? ` · ${ex.target_sets} sets` : ""}
                       </span>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
                           className="w-20 rounded-lg bg-slate/40 px-2 py-1 text-xs"
-                          value={ex.target_reps ?? 0}
+                          value={ex.target_sets ?? 0}
                           onChange={(e) =>
-                            updateTemplateExerciseReps(
+                            updateTemplateExerciseSets(
                               ex.exercise_id,
                               Number(e.target.value)
                             )
@@ -1153,6 +1166,7 @@ export default function App() {
                   {calendarExercises.map((ex, idx) => {
                     const meta = exerciseMap.get(ex.exercise_id);
                     const isCardio = meta?.exercise_type === "cardio";
+                    const isCollapsed = collapsedExercises.has(ex.exercise_id);
                     return (
                       <div
                         key={idx}
@@ -1160,16 +1174,36 @@ export default function App() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-white">
-                            {meta?.name || `Exercise #${ex.exercise_id}`}
+                            {meta?.name || `Exercise #${ex.exercise_id}`} · Set{" "}
+                            {ex.set_number}
                           </div>
-                          <button
-                            className="rounded-lg bg-ember/20 px-2 py-1 text-[11px] text-ember"
-                            onClick={() => removeCalendarExerciseRow(idx)}
-                          >
-                            Remove
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="rounded-lg bg-slate/50 px-2 py-1 text-[11px] text-mist"
+                              onClick={() =>
+                                setCollapsedExercises((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(ex.exercise_id)) {
+                                    next.delete(ex.exercise_id);
+                                  } else {
+                                    next.add(ex.exercise_id);
+                                  }
+                                  return next;
+                                })
+                              }
+                            >
+                              {isCollapsed ? "Show" : "Hide"}
+                            </button>
+                            <button
+                              className="rounded-lg bg-ember/20 px-2 py-1 text-[11px] text-ember"
+                              onClick={() => removeCalendarExerciseRow(idx)}
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
-                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {!isCollapsed && (
+                          <div className="mt-3 grid gap-2 md:grid-cols-2">
                           <div className="space-y-1">
                             <label className="text-xs text-mist/60">Exercise</label>
                             <input
@@ -1241,7 +1275,8 @@ export default function App() {
                               />
                             </div>
                           )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

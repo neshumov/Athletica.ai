@@ -15,7 +15,7 @@ class WorkoutTemplateOut(BaseModel):
 class WorkoutTemplateExerciseCreate(BaseModel):
     exercise_id: int
     order_index: int = 0
-    target_reps: int | None = None
+    target_sets: int | None = None
 
 
 class WorkoutTemplateExercisesSave(BaseModel):
