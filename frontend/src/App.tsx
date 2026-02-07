@@ -130,7 +130,16 @@ export default function App() {
   const [programId, setProgramId] = useState<number | null>(null);
   const [dayName, setDayName] = useState("");
   const [dayId, setDayId] = useState<number | null>(null);
-  const [exerciseForm, setExerciseForm] = useState({
+  const [exerciseForm, setExerciseForm] = useState<{
+    exercise_type: string;
+    exercise_name: string;
+    muscle_group: string;
+    equipment: string;
+    target_sets: number;
+    target_reps: number;
+    target_weight_kg: number;
+    target_duration_minutes: number;
+  }>({
     exercise_type: "strength",
     exercise_name: "",
     muscle_group: MUSCLE_GROUPS[0],
