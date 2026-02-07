@@ -24,7 +24,7 @@ def list_nutrition(
     if end:
         query = query.filter(NutritionDaily.date <= end)
     rows = query.order_by(NutritionDaily.date.desc()).all()
-    return [NutritionOut.model_validate(r.__dict__) for r in rows]
+    return [NutritionOut.model_validate(r, from_attributes=True) for r in rows]
 
 
 @router.post("/nutrition", response_model=NutritionOut)
@@ -38,4 +38,4 @@ def upsert_nutrition(payload: NutritionCreate, db: Session = Depends(get_db)) ->
     row.fat_g = payload.fat_g
     row.carbs_g = payload.carbs_g
     db.commit()
-    return NutritionOut.model_validate(row.__dict__)
+    return NutritionOut.model_validate(row, from_attributes=True)

@@ -71,3 +71,21 @@ def add_template_exercise(
     db.add(row)
     db.commit()
     return {"status": "ok"}
+
+
+@router.delete("/workouts/templates/{template_id}/exercises/{exercise_id}")
+def delete_template_exercise(
+    template_id: int, exercise_id: int, db: Session = Depends(get_db)
+) -> dict:
+    deleted = (
+        db.query(WorkoutTemplateExercise)
+        .filter(
+            WorkoutTemplateExercise.workout_template_id == template_id,
+            WorkoutTemplateExercise.exercise_id == exercise_id,
+        )
+        .delete()
+    )
+    db.commit()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Exercise not found in template")
+    return {"status": "deleted"}

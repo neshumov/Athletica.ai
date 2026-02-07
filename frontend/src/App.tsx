@@ -13,6 +13,11 @@ import { EQUIPMENT, EXERCISE_TYPES, MUSCLE_GROUPS } from "./constants";
 
 const API_BASE = "/api";
 const GOAL_TYPES = ["bulk", "cut", "maintain"] as const;
+const GOAL_LABELS: Record<string, string> = {
+  bulk: "Bulk",
+  cut: "Cut",
+  maintain: "Maintain"
+};
 
 type Goal = {
   id: number;
@@ -197,6 +202,9 @@ export default function App() {
   const [nutritionErrors, setNutritionErrors] = useState<string[]>([]);
 
   const activeGoal = useMemo(() => goals?.find((g) => g.is_active), [goals]);
+  const exerciseMap = useMemo(() => {
+    return new Map((exercises || []).map((ex) => [ex.id, ex]));
+  }, [exercises]);
 
   const togglePriority = (muscle: string) => {
     setGoalForm((s) => {
@@ -241,6 +249,7 @@ export default function App() {
       setGoals((goals || []).map((g) => ({ ...g, is_active: false })).concat(data));
     }
     setEditingGoalId(null);
+    setGoalForm({ goal_type: "bulk", start_date: "", end_date: "", priority_muscle_groups: [] });
   };
 
   const editGoal = (g: Goal) => {
@@ -301,6 +310,7 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ exercise_id: Number(templateExerciseId), order_index: 0 })
     });
+    await loadTemplateExercises(templateId);
   };
 
   const loadTemplateExercises = async (id: number) => {
@@ -318,6 +328,15 @@ export default function App() {
     );
   };
 
+  const removeTemplateExercise = async (exerciseId: number) => {
+    if (!templateId) return;
+    await fetch(
+      `${API_BASE}/workouts/templates/${templateId}/exercises/${exerciseId}`,
+      { method: "DELETE" }
+    );
+    setTemplateExercises((prev) => prev.filter((ex) => ex.exercise_id !== exerciseId));
+  };
+
   const addCalendarExerciseRow = () => {
     if (!templateExerciseId) return;
     setCalendarExercises((prev) =>
@@ -329,6 +348,10 @@ export default function App() {
         duration_minutes: 0
       })
     );
+  };
+
+  const removeCalendarExerciseRow = (index: number) => {
+    setCalendarExercises((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const submitCalendar = async () => {
@@ -357,6 +380,12 @@ export default function App() {
         body: JSON.stringify(payload)
       });
     }
+    setCalendarEditId(null);
+    setCalendarForm({ date: "", workout_template_id: "" });
+    setCalendarExercises([]);
+    const refreshed = await fetch(`${API_BASE}/calendar`);
+    const items = await refreshed.json();
+    setCalendarItems(items);
   };
 
   const startEditCalendar = async (id: number) => {
@@ -411,7 +440,9 @@ export default function App() {
               <p className="text-xs uppercase tracking-[0.2em] text-mist/60">
                 Active Goal
               </p>
-              <p className="text-lg text-white">{activeGoal.goal_type}</p>
+              <p className="text-lg text-white">
+                {GOAL_LABELS[activeGoal.goal_type] || activeGoal.goal_type}
+              </p>
             </div>
           )}
         </div>
@@ -637,7 +668,7 @@ export default function App() {
                   >
                     {GOAL_TYPES.map((t) => (
                       <option key={t} value={t}>
-                        {t}
+                        {GOAL_LABELS[t]}
                       </option>
                     ))}
                   </select>
@@ -705,7 +736,7 @@ export default function App() {
                     key={g.id}
                     className="rounded-2xl border border-slate/60 bg-slate/40 px-4 py-3"
                   >
-                    <p className="text-white">{g.goal_type}</p>
+                    <p className="text-white">{GOAL_LABELS[g.goal_type] || g.goal_type}</p>
                     <p className="text-mist/70">
                       {g.start_date} → {g.end_date || "open"}
                     </p>
@@ -763,7 +794,7 @@ export default function App() {
                   >
                     {EXERCISE_TYPES.map((t) => (
                       <option key={t} value={t}>
-                        {t}
+                        {t === "strength" ? "Strength" : "Cardio"}
                       </option>
                     ))}
                   </select>
@@ -824,7 +855,8 @@ export default function App() {
                   >
                     <p className="text-white">{ex.name}</p>
                     <p className="text-mist/70">
-                      {ex.exercise_type} · {ex.muscle_group} · {ex.equipment}
+                      {ex.exercise_type === "strength" ? "Strength" : "Cardio"} ·{" "}
+                      {ex.muscle_group} · {ex.equipment}
                     </p>
                   </div>
                 ))}
@@ -904,9 +936,18 @@ export default function App() {
                   {templateExercises.map((ex) => (
                     <div
                       key={ex.exercise_id}
-                      className="rounded-lg border border-slate/60 bg-slate/40 px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate/60 bg-slate/40 px-3 py-2"
                     >
-                      {ex.name} · {ex.exercise_type}
+                      <span>
+                        {ex.name} ·{" "}
+                        {ex.exercise_type === "strength" ? "Strength" : "Cardio"}
+                      </span>
+                      <button
+                        className="rounded-lg bg-ember/20 px-2 py-1 text-[11px] text-ember"
+                        onClick={() => removeTemplateExercise(ex.exercise_id)}
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -978,70 +1019,101 @@ export default function App() {
                 </button>
 
                 <div className="space-y-3">
-                  {calendarExercises.map((ex, idx) => (
-                    <div key={idx} className="grid gap-2 md:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-xs text-mist/60">Exercise Id</label>
-                        <input
-                          className="rounded-lg bg-slate/40 px-3 py-2"
-                          value={ex.exercise_id}
-                          readOnly
-                        />
+                  {calendarExercises.map((ex, idx) => {
+                    const meta = exerciseMap.get(ex.exercise_id);
+                    const isCardio = meta?.exercise_type === "cardio";
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-2xl border border-slate/60 bg-slate/40 p-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-white">
+                            {meta?.name || `Exercise #${ex.exercise_id}`}
+                          </div>
+                          <button
+                            className="rounded-lg bg-ember/20 px-2 py-1 text-[11px] text-ember"
+                            onClick={() => removeCalendarExerciseRow(idx)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                          <div className="space-y-1">
+                            <label className="text-xs text-mist/60">Exercise</label>
+                            <input
+                              className="rounded-lg bg-slate/40 px-3 py-2"
+                              value={meta?.name || ex.exercise_id}
+                              readOnly
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-mist/60">Set Number</label>
+                            <input
+                              type="number"
+                              className="rounded-lg bg-slate/40 px-3 py-2"
+                              value={ex.set_number}
+                              onChange={(e) => {
+                                const next = [...calendarExercises];
+                                next[idx] = {
+                                  ...next[idx],
+                                  set_number: Number(e.target.value)
+                                };
+                                setCalendarExercises(next);
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-mist/60">Reps</label>
+                            <input
+                              type="number"
+                              className="rounded-lg bg-slate/40 px-3 py-2"
+                              value={ex.reps || 0}
+                              onChange={(e) => {
+                                const next = [...calendarExercises];
+                                next[idx] = { ...next[idx], reps: Number(e.target.value) };
+                                setCalendarExercises(next);
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-mist/60">Weight (kg)</label>
+                            <input
+                              type="number"
+                              className="rounded-lg bg-slate/40 px-3 py-2"
+                              value={ex.weight_kg || 0}
+                              onChange={(e) => {
+                                const next = [...calendarExercises];
+                                next[idx] = {
+                                  ...next[idx],
+                                  weight_kg: Number(e.target.value)
+                                };
+                                setCalendarExercises(next);
+                              }}
+                            />
+                          </div>
+                          {isCardio && (
+                            <div className="space-y-1">
+                              <label className="text-xs text-mist/60">Duration (min)</label>
+                              <input
+                                type="number"
+                                className="rounded-lg bg-slate/40 px-3 py-2"
+                                value={ex.duration_minutes || 0}
+                                onChange={(e) => {
+                                  const next = [...calendarExercises];
+                                  next[idx] = {
+                                    ...next[idx],
+                                    duration_minutes: Number(e.target.value)
+                                  };
+                                  setCalendarExercises(next);
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-mist/60">Set Number</label>
-                        <input
-                          type="number"
-                          className="rounded-lg bg-slate/40 px-3 py-2"
-                          value={ex.set_number}
-                          onChange={(e) => {
-                            const next = [...calendarExercises];
-                            next[idx] = { ...next[idx], set_number: Number(e.target.value) };
-                            setCalendarExercises(next);
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-mist/60">Reps</label>
-                        <input
-                          type="number"
-                          className="rounded-lg bg-slate/40 px-3 py-2"
-                          value={ex.reps || 0}
-                          onChange={(e) => {
-                            const next = [...calendarExercises];
-                            next[idx] = { ...next[idx], reps: Number(e.target.value) };
-                            setCalendarExercises(next);
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-mist/60">Weight (kg)</label>
-                        <input
-                          type="number"
-                          className="rounded-lg bg-slate/40 px-3 py-2"
-                          value={ex.weight_kg || 0}
-                          onChange={(e) => {
-                            const next = [...calendarExercises];
-                            next[idx] = { ...next[idx], weight_kg: Number(e.target.value) };
-                            setCalendarExercises(next);
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-mist/60">Duration (min)</label>
-                        <input
-                          type="number"
-                          className="rounded-lg bg-slate/40 px-3 py-2"
-                          value={ex.duration_minutes || 0}
-                          onChange={(e) => {
-                            const next = [...calendarExercises];
-                            next[idx] = { ...next[idx], duration_minutes: Number(e.target.value) };
-                            setCalendarExercises(next);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {calendarErrors.length > 0 && (
