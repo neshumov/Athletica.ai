@@ -933,129 +933,135 @@ export default function App() {
 
               <div className="mt-6 space-y-4">
                 {workoutExercises.map((ex, idx) => (
-                  <div key={idx} className="grid gap-2 md:grid-cols-7">
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Exercise</label>
-                      <input
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        placeholder="Exercise"
-                        value={ex.exercise_name}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], exercise_name: e.target.value };
-                          setWorkoutExercises(next);
-                        }}
-                      />
+                  <div key={idx} className="rounded-2xl border border-slate/60 bg-slate/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-mist/70">Exercise {idx + 1}</p>
+                      <span className="text-xs text-ember">{ex.exercise_type}</span>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Type</label>
-                      <select
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        value={ex.exercise_type}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], exercise_type: e.target.value };
-                          setWorkoutExercises(next);
-                        }}
-                      >
-                        {EXERCISE_TYPES.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Muscle</label>
-                      <select
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        value={ex.muscle_group || ""}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], muscle_group: e.target.value };
-                          setWorkoutExercises(next);
-                        }}
-                      >
-                        {MUSCLE_GROUPS.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Equipment</label>
-                      <select
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        value={ex.equipment || ""}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], equipment: e.target.value };
-                          setWorkoutExercises(next);
-                        }}
-                      >
-                        {EQUIPMENT.map((eq) => (
-                          <option key={eq} value={eq}>
-                            {eq}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Sets</label>
-                      <input
-                        type="number"
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        placeholder="Sets"
-                        value={ex.set_number}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], set_number: Number(e.target.value) };
-                          setWorkoutExercises(next);
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Reps</label>
-                      <input
-                        type="number"
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        placeholder="Reps"
-                        value={ex.reps || 0}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], reps: Number(e.target.value) };
-                          setWorkoutExercises(next);
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Weight (kg)</label>
-                      <input
-                        type="number"
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        placeholder="Weight kg"
-                        value={ex.weight_kg || 0}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], weight_kg: Number(e.target.value) };
-                          setWorkoutExercises(next);
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-mist/60">Duration (min)</label>
-                      <input
-                        type="number"
-                        className="rounded-lg bg-slate/40 px-3 py-2"
-                        placeholder="Duration min (cardio)"
-                        value={ex.duration_minutes || 0}
-                        onChange={(e) => {
-                          const next = [...workoutExercises];
-                          next[idx] = { ...next[idx], duration_minutes: Number(e.target.value) };
-                          setWorkoutExercises(next);
-                        }}
-                      />
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Exercise</label>
+                        <input
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          placeholder="Exercise"
+                          value={ex.exercise_name}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], exercise_name: e.target.value };
+                            setWorkoutExercises(next);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Type</label>
+                        <select
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          value={ex.exercise_type}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], exercise_type: e.target.value };
+                            setWorkoutExercises(next);
+                          }}
+                        >
+                          {EXERCISE_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Muscle</label>
+                        <select
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          value={ex.muscle_group || ""}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], muscle_group: e.target.value };
+                            setWorkoutExercises(next);
+                          }}
+                        >
+                          {MUSCLE_GROUPS.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Equipment</label>
+                        <select
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          value={ex.equipment || ""}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], equipment: e.target.value };
+                            setWorkoutExercises(next);
+                          }}
+                        >
+                          {EQUIPMENT.map((eq) => (
+                            <option key={eq} value={eq}>
+                              {eq}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Sets</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          placeholder="Sets"
+                          value={ex.set_number}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], set_number: Number(e.target.value) };
+                            setWorkoutExercises(next);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Reps</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          placeholder="Reps"
+                          value={ex.reps || 0}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], reps: Number(e.target.value) };
+                            setWorkoutExercises(next);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Weight (kg)</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          placeholder="Weight kg"
+                          value={ex.weight_kg || 0}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], weight_kg: Number(e.target.value) };
+                            setWorkoutExercises(next);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-mist/60">Duration (min)</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg bg-ink/40 px-3 py-2"
+                          placeholder="Duration min (cardio)"
+                          value={ex.duration_minutes || 0}
+                          onChange={(e) => {
+                            const next = [...workoutExercises];
+                            next[idx] = { ...next[idx], duration_minutes: Number(e.target.value) };
+                            setWorkoutExercises(next);
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
