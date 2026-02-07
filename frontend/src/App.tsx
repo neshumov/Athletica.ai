@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { EQUIPMENT, EXERCISE_TYPES, MUSCLE_GROUPS } from "./constants";
 
-const API_BASE = "";
+const API_BASE = "/api";
 
 type Goal = {
   id: number;
@@ -35,12 +35,27 @@ type WorkoutTemplate = {
   name: string;
 };
 
+type TemplateExercise = {
+  exercise_id: number;
+  name: string;
+  exercise_type: string;
+  muscle_group: string;
+  equipment: string;
+};
+
 type CalendarExercise = {
   exercise_id: number;
   set_number: number;
   reps?: number | null;
   weight_kg?: number | null;
   duration_minutes?: number | null;
+};
+
+type CalendarItem = {
+  id: number;
+  date: string;
+  workout_template_id: number;
+  name_snapshot: string;
 };
 
 type NutritionEntry = {
@@ -130,6 +145,10 @@ export default function App() {
     "/nutrition",
     [tab]
   );
+  const { data: calendarItems, setData: setCalendarItems } = useApi<CalendarItem[]>(
+    "/calendar",
+    [tab]
+  );
 
   const [goalForm, setGoalForm] = useState({
     goal_type: "bulk",
@@ -156,6 +175,7 @@ export default function App() {
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [templateExerciseId, setTemplateExerciseId] = useState<string>("");
   const [templateErrors, setTemplateErrors] = useState<string[]>([]);
+  const [templateExercises, setTemplateExercises] = useState<TemplateExercise[]>([]);
 
   const [calendarForm, setCalendarForm] = useState({
     date: "",
@@ -163,6 +183,7 @@ export default function App() {
   });
   const [calendarExercises, setCalendarExercises] = useState<CalendarExercise[]>([]);
   const [calendarErrors, setCalendarErrors] = useState<string[]>([]);
+  const [calendarEditId, setCalendarEditId] = useState<number | null>(null);
 
   const [nutritionForm, setNutritionForm] = useState({
     date: "",
@@ -247,16 +268,18 @@ export default function App() {
     });
   };
 
-  const addCalendarExerciseRow = () => {
-    if (!templateExerciseId) return;
-    setCalendarExercises((prev) =>
-      prev.concat({
-        exercise_id: Number(templateExerciseId),
+  const loadTemplateExercises = async (id: number) => {
+    const res = await fetch(`${API_BASE}/workouts/templates/${id}/exercises`);
+    const data = (await res.json()) as TemplateExercise[];
+    setTemplateExercises(data);
+    setCalendarExercises(
+      data.map((ex) => ({
+        exercise_id: ex.exercise_id,
         set_number: 1,
-        reps: 10,
+        reps: ex.exercise_type === "cardio" ? 0 : 10,
         weight_kg: 0,
-        duration_minutes: 0
-      })
+        duration_minutes: ex.exercise_type === "cardio" ? 20 : 0
+      }))
     );
   };
 
@@ -268,15 +291,41 @@ export default function App() {
     setCalendarErrors(errors);
     if (errors.length > 0) return;
 
-    await fetch(`${API_BASE}/calendar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date: calendarForm.date,
-        workout_template_id: Number(calendarForm.workout_template_id),
-        exercises: calendarExercises
-      })
+    const payload = {
+      date: calendarForm.date,
+      workout_template_id: Number(calendarForm.workout_template_id),
+      exercises: calendarExercises
+    };
+
+    if (calendarEditId) {
+      await fetch(`${API_BASE}/calendar/${calendarEditId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      await fetch(`${API_BASE}/calendar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    }
+  };
+
+  const startEditCalendar = async (id: number) => {
+    const res = await fetch(`${API_BASE}/calendar/${id}`);
+    const data = await res.json();
+    setCalendarEditId(id);
+    setCalendarForm({
+      date: data.date,
+      workout_template_id: String(data.workout_template_id)
     });
+    setCalendarExercises(data.exercises || []);
+  };
+
+  const deleteCalendar = async (id: number) => {
+    await fetch(`${API_BASE}/calendar/${id}`, { method: "DELETE" });
+    setCalendarItems((calendarItems || []).filter((c) => c.id !== id));
   };
 
   const submitNutrition = async () => {
@@ -742,7 +791,10 @@ export default function App() {
                     className={`w-full rounded-lg px-3 py-2 text-left ${
                       templateId === t.id ? "bg-ember/20" : "bg-slate/40"
                     }`}
-                    onClick={() => setTemplateId(t.id)}
+                    onClick={() => {
+                      setTemplateId(t.id);
+                      loadTemplateExercises(t.id);
+                    }}
                   >
                     {t.name}
                   </button>
@@ -774,6 +826,16 @@ export default function App() {
                 >
                   Add To Template
                 </button>
+                <div className="mt-4 space-y-2 text-xs text-mist/70">
+                  {templateExercises.map((ex) => (
+                    <div
+                      key={ex.exercise_id}
+                      className="rounded-lg border border-slate/60 bg-slate/40 px-3 py-2"
+                    >
+                      {ex.name} · {ex.exercise_type}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -800,9 +862,11 @@ export default function App() {
                   <select
                     className="w-full rounded-lg bg-slate/40 px-3 py-2"
                     value={calendarForm.workout_template_id}
-                    onChange={(e) =>
-                      setCalendarForm((s) => ({ ...s, workout_template_id: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      setCalendarForm((s) => ({ ...s, workout_template_id: e.target.value }));
+                      const id = Number(e.target.value);
+                      if (id) loadTemplateExercises(id);
+                    }}
                   >
                     <option value="">Select template</option>
                     {(templates || []).map((t) => (
@@ -812,28 +876,6 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-mist/60">Add Exercise Row</label>
-                  <select
-                    className="w-full rounded-lg bg-slate/40 px-3 py-2"
-                    value={templateExerciseId}
-                    onChange={(e) => setTemplateExerciseId(e.target.value)}
-                  >
-                    <option value="">Select exercise</option>
-                    {(exercises || []).map((ex) => (
-                      <option key={ex.id} value={ex.id}>
-                        {ex.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  className="rounded-lg bg-slate/50 px-4 py-2 text-sm"
-                  onClick={addCalendarExerciseRow}
-                >
-                  Add Exercise Row
-                </button>
-
                 <div className="space-y-3">
                   {calendarExercises.map((ex, idx) => (
                     <div key={idx} className="grid gap-2 md:grid-cols-2">
@@ -910,8 +952,37 @@ export default function App() {
                   className="rounded-lg bg-ember px-4 py-2 text-sm text-ink"
                   onClick={submitCalendar}
                 >
-                  Save Day
+                  {calendarEditId ? "Update Day" : "Save Day"}
                 </button>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate/60 bg-coal/70 p-6">
+              <h2 className="font-display text-xl text-white">Scheduled</h2>
+              <div className="mt-4 space-y-3 text-sm">
+                {(calendarItems || []).map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate/60 bg-slate/40 px-4 py-3"
+                  >
+                    <p className="text-white">{item.date}</p>
+                    <p className="text-mist/70">{item.name_snapshot}</p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        className="rounded-lg bg-slate/50 px-3 py-1 text-xs"
+                        onClick={() => startEditCalendar(item.id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="rounded-lg bg-ember/20 px-3 py-1 text-xs text-ember"
+                        onClick={() => deleteCalendar(item.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </section>

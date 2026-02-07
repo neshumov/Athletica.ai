@@ -24,3 +24,11 @@ class CalendarWorkoutOut(BaseModel):
     date: date
     workout_template_id: int
     name_snapshot: str
+
+
+class CalendarWorkoutDetail(BaseModel):
+    id: int
+    date: date
+    workout_template_id: int
+    name_snapshot: str
+    exercises: list[CalendarWorkoutExerciseIn]

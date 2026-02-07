@@ -21,6 +21,27 @@ def list_templates(db: Session = Depends(get_db)) -> list[WorkoutTemplateOut]:
     return [WorkoutTemplateOut.model_validate(r.__dict__) for r in rows]
 
 
+@router.get("/workouts/templates/{template_id}/exercises")
+def list_template_exercises(template_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    rows = (
+        db.query(WorkoutTemplateExercise, Exercise)
+        .join(Exercise, Exercise.id == WorkoutTemplateExercise.exercise_id)
+        .filter(WorkoutTemplateExercise.workout_template_id == template_id)
+        .order_by(WorkoutTemplateExercise.order_index.asc())
+        .all()
+    )
+    return [
+        {
+            "exercise_id": ex.id,
+            "name": ex.name,
+            "exercise_type": ex.exercise_type,
+            "muscle_group": ex.muscle_group,
+            "equipment": ex.equipment,
+        }
+        for _, ex in rows
+    ]
+
+
 @router.post("/workouts/templates", response_model=WorkoutTemplateOut)
 def create_template(
     payload: WorkoutTemplateCreate, db: Session = Depends(get_db)
