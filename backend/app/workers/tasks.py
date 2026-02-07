@@ -147,7 +147,7 @@ def send_daily_insight() -> dict:
         message = "📊 Daily Insight\n\n"
         message += f"Goal Progress: {_format_goal_progress(goal)}\n"
         if whoop:
-            message += f"Data Date: {whoop.date}\n"
+            message += f"Last Whoop Day: {whoop.date}\n"
         message += (
             f"Recovery Score: {recovery} / 100\n" if recovery is not None else ""
         )
