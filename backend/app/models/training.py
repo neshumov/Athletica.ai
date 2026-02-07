@@ -35,6 +35,7 @@ class ProgramExercise(Base):
     exercise_type: Mapped[str] = mapped_column(String(16), default="strength")
     exercise_name: Mapped[str] = mapped_column(String(128))
     muscle_group: Mapped[str | None] = mapped_column(String(64))
+    equipment: Mapped[str | None] = mapped_column(String(64))
     target_sets: Mapped[int] = mapped_column(Integer)
     target_reps: Mapped[int] = mapped_column(Integer)
     target_weight_kg: Mapped[float | None] = mapped_column(Float)

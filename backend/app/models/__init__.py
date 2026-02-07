@@ -5,6 +5,7 @@ from app.models.workout import Workout, WorkoutExercise
 from app.models.whoop import WhoopDaily
 from app.models.recommendation import Recommendation, RecommendationFeedback
 from app.models.whoop_oauth import WhoopToken, WhoopOAuthState
+from app.models.nutrition import NutritionDaily
 
 __all__ = [
     "User",
@@ -19,4 +20,5 @@ __all__ = [
     "RecommendationFeedback",
     "WhoopToken",
     "WhoopOAuthState",
+    "NutritionDaily",
 ]

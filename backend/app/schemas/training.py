@@ -27,6 +27,7 @@ class ProgramExerciseCreate(BaseModel):
     exercise_type: str = "strength"
     exercise_name: str
     muscle_group: str | None = None
+    equipment: str | None = None
     target_sets: int
     target_reps: int
     target_weight_kg: float | None = None
@@ -39,6 +40,7 @@ class ProgramExerciseOut(BaseModel):
     exercise_type: str
     exercise_name: str
     muscle_group: str | None
+    equipment: str | None
     target_sets: int
     target_reps: int
     target_weight_kg: float | None

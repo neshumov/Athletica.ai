@@ -10,6 +10,7 @@ class WorkoutExerciseIn(BaseModel):
     set_number: int
     exercise_type: str = "strength"
     muscle_group: str | None = None
+    equipment: str | None = None
     reps: int | None = None
     weight_kg: float | None = None
     rpe: float | None = None

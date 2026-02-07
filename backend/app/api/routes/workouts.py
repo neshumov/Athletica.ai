@@ -32,6 +32,7 @@ def create_workout(payload: WorkoutCreate, db: Session = Depends(get_db)) -> dic
                 set_number=ex.set_number,
                 exercise_type=ex.exercise_type,
                 muscle_group=ex.muscle_group,
+                equipment=ex.equipment,
                 reps=ex.reps or 0,
                 weight_kg=ex.weight_kg or 0.0,
                 rpe=ex.rpe or 0.0,
@@ -62,3 +63,14 @@ def last_workout(
         exercises_q = exercises_q.filter(WorkoutExercise.exercise_name == exercise_name)
     exercises = [e.__dict__ for e in exercises_q.all()]
     return {"workout": workout.__dict__, "exercises": exercises}
+
+
+@router.delete("/workouts/{workout_id}")
+def delete_workout(workout_id: int, db: Session = Depends(get_db)) -> dict:
+    workout = db.query(Workout).filter(Workout.id == workout_id).first()
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    db.query(WorkoutExercise).filter(WorkoutExercise.workout_id == workout_id).delete()
+    db.delete(workout)
+    db.commit()
+    return {"status": "deleted"}

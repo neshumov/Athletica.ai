@@ -29,6 +29,7 @@ class WorkoutExercise(Base):
     set_number: Mapped[int] = mapped_column(Integer, primary_key=True)
     exercise_type: Mapped[str] = mapped_column(String(16), default="strength")
     muscle_group: Mapped[str | None] = mapped_column(String(64))
+    equipment: Mapped[str | None] = mapped_column(String(64))
     reps: Mapped[int] = mapped_column(Integer)
     weight_kg: Mapped[float] = mapped_column(Float)
     rpe: Mapped[float] = mapped_column(Float)

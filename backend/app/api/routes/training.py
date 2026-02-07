@@ -58,6 +58,7 @@ def create_program_exercise(
         exercise_type=payload.exercise_type,
         exercise_name=payload.exercise_name,
         muscle_group=payload.muscle_group,
+        equipment=payload.equipment,
         target_sets=payload.target_sets,
         target_reps=payload.target_reps,
         target_weight_kg=payload.target_weight_kg,
