@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from os import getenv
 
 import httpx
@@ -9,6 +10,7 @@ from app.db.session import SessionLocal
 from app.integrations.whoop_client import WhoopClient
 from app.ml.pipeline import train_all_models
 from app.models.goal import UserGoal
+from app.models.nutrition import NutritionDaily
 from app.models.recommendation import Recommendation, RecommendationFeedback
 from app.models.whoop import WhoopDaily
 from app.services.telegram import send_telegram_message
@@ -111,11 +113,52 @@ def _format_reason(explanation: dict | None) -> str:
     return f"\nReason:\n{lines}"
 
 
+def _calc_nutrition_note(
+    db: SessionLocal, day: date, body_weight_kg: float | None
+) -> tuple[str, str]:
+    row = db.query(NutritionDaily).filter(NutritionDaily.date == day).first()
+    if not row:
+        return "Nutrition: not logged today.", "Nutrition Recommendation:\nLog your intake today."
+
+    summary = (
+        f"Nutrition: {row.calories} kcal · "
+        f"P {row.protein_g}g · F {row.fat_g}g · C {row.carbs_g}g"
+    )
+    recs = []
+    if body_weight_kg:
+        target_protein = 1.6 * body_weight_kg
+        if row.protein_g < target_protein:
+            recs.append(
+                f"Increase protein by ~{int(target_protein - row.protein_g)}g."
+            )
+    if row.calories < 1800:
+        recs.append("Calories look low; consider a small increase.")
+    elif row.calories > 3200:
+        recs.append("Calories look high; consider a small reduction.")
+    if not recs:
+        recs.append("Keep current nutrition plan today.")
+    rec_text = "Nutrition Recommendation:\n" + "\n".join([f"• {r}" for r in recs[:3]])
+    return summary, rec_text
+
+
+@celery_app.task
+def send_nutrition_prompt() -> dict:
+    today = datetime.now(ZoneInfo("Europe/Moscow")).date()
+    message = (
+        "🍽 Nutrition Log\n\n"
+        "Send your daily macros as:\n"
+        "`calories protein fat carbs`\n"
+        "Example: `2200 160 70 240`"
+    )
+    send_telegram_message(message)
+    return {"status": "ok", "date": str(today)}
+
+
 @celery_app.task
 def send_daily_insight() -> dict:
     db = SessionLocal()
     try:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(ZoneInfo("Europe/Moscow")).date()
         whoop = (
             db.query(WhoopDaily)
             .filter(
@@ -132,9 +175,20 @@ def send_daily_insight() -> dict:
             .first()
         )
 
-        sleep_hours = (
-            round((whoop.sleep_duration_minutes or 0) / 60, 1) if whoop else None
-        )
+        sleep_hours = None
+        sleep_label = "Sleep"
+        if whoop and whoop.sleep_duration_minutes:
+            sleep_hours = round(whoop.sleep_duration_minutes / 60, 1)
+        else:
+            prev_sleep = (
+                db.query(WhoopDaily)
+                .filter(WhoopDaily.sleep_duration_minutes.isnot(None))
+                .order_by(WhoopDaily.date.desc())
+                .first()
+            )
+            if prev_sleep and prev_sleep.sleep_duration_minutes:
+                sleep_hours = round(prev_sleep.sleep_duration_minutes / 60, 1)
+                sleep_label = "Sleep (prev)"
         recovery = int(whoop.recovery_score) if whoop and whoop.recovery_score else None
         strain = round(whoop.strain, 1) if whoop and whoop.strain else None
         hrv = int(whoop.hrv) if whoop and whoop.hrv else None
@@ -152,7 +206,7 @@ def send_daily_insight() -> dict:
             f"Recovery Score: {recovery} / 100\n" if recovery is not None else ""
         )
         if sleep_hours is not None:
-            message += f"Sleep: {sleep_hours}h\n"
+            message += f"{sleep_label}: {sleep_hours}h\n"
         if strain is not None:
             message += f"Strain: {strain}\n"
         if hrv is not None:
@@ -166,6 +220,11 @@ def send_daily_insight() -> dict:
             message += _format_reason(rec.explanation_json)
         else:
             message += "\n✅ Recommendation:\nKeep current plan today."
+
+        nutrition_summary, nutrition_rec = _calc_nutrition_note(
+            db, today, whoop.body_weight_kg if whoop else None
+        )
+        message += f"\n\n🍽 {nutrition_summary}\n{nutrition_rec}"
 
         reply_markup = None
         if rec:

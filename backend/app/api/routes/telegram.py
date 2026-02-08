@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from app.models.nutrition import NutritionDaily
 from app.models.recommendation import Recommendation, RecommendationFeedback
+from app.workers.tasks import send_daily_insight
 from app.services.telegram import send_telegram_message
 
 router = APIRouter(tags=["telegram"])
@@ -23,7 +29,29 @@ async def telegram_webhook(request: Request, db: Session = Depends(get_db)) -> d
     payload = await request.json()
     callback = payload.get("callback_query") if isinstance(payload, dict) else None
     if not callback:
-        return {"status": "ignored"}
+        message = payload.get("message") if isinstance(payload, dict) else None
+        if not message:
+            return {"status": "ignored"}
+
+        text = message.get("text") or ""
+        numbers = [int(n) for n in re.findall(r"\d+", text)]
+        if len(numbers) < 4:
+            return {"status": "ignored"}
+        calories, protein, fat, carbs = numbers[:4]
+        today = datetime.now(ZoneInfo("Europe/Moscow")).date()
+        row = db.query(NutritionDaily).filter(NutritionDaily.date == today).first()
+        if not row:
+            row = NutritionDaily(date=today)
+            db.add(row)
+        row.calories = calories
+        row.protein_g = protein
+        row.fat_g = fat
+        row.carbs_g = carbs
+        db.commit()
+
+        # After nutrition input, send the daily insight message.
+        send_daily_insight.delay()
+        return {"status": "ok"}
 
     data = callback.get("data", "")
     if not data.startswith("rec:"):

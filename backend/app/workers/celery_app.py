@@ -19,8 +19,12 @@ celery_app.conf.task_routes = {
 celery_app.conf.timezone = "Europe/Moscow"
 celery_app.conf.enable_utc = False
 celery_app.conf.beat_schedule = {
-    "daily-telegram-insight": {
-        "task": "app.workers.tasks.send_daily_insight",
+    "hourly-whoop-sync": {
+        "task": "app.workers.tasks.sync_whoop",
+        "schedule": crontab(minute=0),
+    },
+    "daily-telegram-nutrition-prompt": {
+        "task": "app.workers.tasks.send_nutrition_prompt",
         "schedule": crontab(hour=11, minute=0),
-    }
+    },
 }
