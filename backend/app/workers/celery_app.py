@@ -15,6 +15,7 @@ celery_app.conf.task_routes = {
     "app.workers.tasks.sync_whoop": {"queue": "whoop"},
     "app.workers.tasks.train_models": {"queue": "ml"},
     "app.workers.tasks.send_daily_insight": {"queue": "ml"},
+    "app.workers.tasks.send_nutrition_prompt": {"queue": "ml"},
 }
 celery_app.conf.timezone = "Europe/Moscow"
 celery_app.conf.enable_utc = False
